@@ -1,0 +1,20 @@
+{
+ "n_tuning_maps": 60,
+ "reactive": {
+  "k_drive": 0.3,
+  "k_steer": 5.0,
+  "k_avoid": 6.0,
+  "k_brake": 0.2
+ },
+ "reactive_success": 0.5166666666666667,
+ "reactive_grid_points": 192,
+ "cbf": {
+  "look_ahead": 0.12,
+  "margin": 0.02,
+  "alpha": 12.0
+ },
+ "cbf_nominal": "ppo",
+ "cbf_success_with_nominal": 0.7166666666666667,
+ "cbf_grid_points": 30,
+ "note_rejected_search": "An earlier CBF sweep used DWA as the nominal planner. DWA is already collision-free here, so success rose monotonically with the class-K gain (0.233/0.283/0.383/0.417/0.467 at alpha=1.5/3/6/12/24) - the search was walking towards disabling the filter. Tuning against a nominal that does collide makes the objective two-sided; the winner above is interior in both look_ahead and alpha."
+}

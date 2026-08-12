@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Run artefacts live outside the repo (see BAHN_WORK_DIR in README);
+# anything that does land here is regenerable from seeds.
+runs/
+work/
+*.zip
+*.pt
+*.npz

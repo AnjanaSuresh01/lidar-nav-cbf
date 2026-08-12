@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bahn"
+version = "0.1.0"
+description = "Reactive, classical and learned LiDAR local planners under a control-barrier-function safety filter, benchmarked on BARN-specification maps"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Anjana Suresh", email = "anjanas222001@gmail.com" }]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "gymnasium>=1.0",
+]
+
+[project.optional-dependencies]
+learn = ["torch>=2.3", "stable-baselines3>=2.4"]
+viz = ["matplotlib>=3.8"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+bahn = "bahn.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY"]
