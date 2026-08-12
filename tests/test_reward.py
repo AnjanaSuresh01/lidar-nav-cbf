@@ -8,37 +8,46 @@ resulting reward had a standard deviation of 615 and spikes to +/- 3000, and PPO
 learned the only sane response: stand still and collect 0 per cent success.
 
 Nothing about that was visible in a loss curve.  It is visible in these numbers.
+
+They drive :class:`~bahn.gym_env.NavCore` directly rather than going through the
+Stable-Baselines3 ``VecEnv`` wrapper, so the guard keeps running in CI on a
+plain ``pip install -e ".[dev]"`` without pulling in torch.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from bahn.config import ROBOT, SIM
-from bahn.gym_env import RewardConfig, make_vec_env_class
+from bahn.config import LIDAR, ROBOT, SIM
+from bahn.gym_env import NavCore, RewardConfig
 from bahn.world import barn_suite, split_suite
 
-BOUND = 5.0 + abs(RewardConfig.collision)  # the largest legitimate single-step reward
+BOUND = RewardConfig.success + abs(RewardConfig.collision)  # largest legitimate step reward
 
 
-def rollout_rewards(steps: int = 250, n_envs: int = 16):
+def make_core(n_envs: int = 16) -> NavCore:
     maps, _ = split_suite(list(barn_suite(repetitions=3)), n_test=1)
-    env = make_vec_env_class()(maps, n_envs=n_envs, seed=0)
-    env.reset()
+    return NavCore(maps, n_envs, 0, ROBOT, LIDAR, SIM, sequential=False)
+
+
+def rollout_rewards(steps: int = 250, n_envs: int = 16) -> tuple[np.ndarray, NavCore]:
+    core = make_core(n_envs)
     rng = np.random.default_rng(0)
     rewards = []
     for _ in range(steps):
         a = rng.uniform(-1.0, 1.0, size=(n_envs, 2)).astype(np.float32)
         a[:, 0] = 1.0  # drive forward, so the robot actually meets obstacles
-        env.step_async(a)
-        _, r, _, _ = env.step_wait()
-        rewards.append(r)
-    return np.concatenate(rewards), env
+        reward, done, _, _ = core.advance(a)
+        rewards.append(reward)
+        finished = np.flatnonzero(done)
+        if finished.size:
+            core.reset_slots(finished)
+    return np.concatenate(rewards), core
 
 
 def test_geodesic_field_has_no_unreachable_cells_in_play():
-    _, env = rollout_rewards(steps=60)
-    assert (env._core.sim.geodesic >= 999).sum() == 0
+    _, core = rollout_rewards(steps=60)
+    assert (core.sim.geodesic >= 999).sum() == 0
 
 
 def test_reward_stays_on_a_sane_scale():
@@ -50,7 +59,7 @@ def test_reward_stays_on_a_sane_scale():
 
 
 def test_progress_term_is_capped_at_what_the_robot_could_cover():
-    """Cell-quantisation at obstacle corners can shift the field by more than the
+    """Cell quantisation at obstacle corners can shift the field by more than the
     robot moved; the cap keeps that from being read as real progress."""
     cap = ROBOT.max_v * SIM.dt * 1.5
     assert cap > ROBOT.max_v * SIM.dt  # never binds on legitimate motion
@@ -61,20 +70,14 @@ def test_progress_term_is_capped_at_what_the_robot_could_cover():
 
 def test_standing_still_is_worse_than_making_progress():
     """The whole point of the shaping: freezing must not be the optimal policy."""
-    maps, _ = split_suite(list(barn_suite(repetitions=3)), n_test=1)
-    env = make_vec_env_class()(maps, n_envs=8, seed=0)
-    env.reset()
-    still = []
-    for _ in range(40):
-        env.step_async(np.tile([-1.0, 0.0], (8, 1)).astype(np.float32))
-        _, r, _, _ = env.step_wait()
-        still.append(r)
 
-    env.reset()
-    moving = []
-    for _ in range(40):
-        env.step_async(np.tile([1.0, 0.0], (8, 1)).astype(np.float32))
-        _, r, _, _ = env.step_wait()
-        moving.append(r)
+    def mean_reward(v_action: float) -> float:
+        core = make_core(n_envs=8)
+        rewards = []
+        for _ in range(40):
+            a = np.tile([v_action, 0.0], (8, 1)).astype(np.float32)
+            reward, _, _, _ = core.advance(a)
+            rewards.append(reward)
+        return float(np.mean(rewards))
 
-    assert np.mean(moving) > np.mean(still)
+    assert mean_reward(1.0) > mean_reward(-1.0)

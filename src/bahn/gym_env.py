@@ -81,8 +81,14 @@ def _spaces(lidar: LidarSpec):
     return obs_space, act_space
 
 
-class _Core:
-    """Reward and termination logic shared by both interfaces."""
+class NavCore:
+    """Reward and termination logic, shared by both interfaces.
+
+    Public so that the reward can be tested without importing an RL library:
+    the guard in ``tests/test_reward.py`` protects against a bug that silently
+    cost a whole training run, and it should keep running in CI whether or not
+    torch is installed.
+    """
 
     def __init__(
         self,
@@ -159,7 +165,7 @@ def make_env_class():
             spec: SimSpec = SIM,
         ):
             self.observation_space, self.action_space = _spaces(lidar)
-            self._core = _Core(maps, 1, seed, robot, lidar, spec, sequential=False)
+            self._core = NavCore(maps, 1, seed, robot, lidar, spec, sequential=False)
 
         def reset(self, *, seed: int | None = None, options: dict | None = None):
             super().reset(seed=seed)
@@ -192,7 +198,7 @@ def make_vec_env_class():
         ):
             obs_space, act_space = _spaces(lidar)
             super().__init__(n_envs, obs_space, act_space)
-            self._core = _Core(maps, n_envs, seed, robot, lidar, spec, sequential=False)
+            self._core = NavCore(maps, n_envs, seed, robot, lidar, spec, sequential=False)
             self._actions: np.ndarray | None = None
 
         def reset(self):
@@ -237,6 +243,7 @@ def make_vec_env_class():
 
 __all__ = [
     "OUTCOME_RUNNING",
+    "NavCore",
     "RewardConfig",
     "decode_action",
     "encode_obs",
