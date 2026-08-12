@@ -1,5 +1,7 @@
 # lidar-nav-cbf
 
+[![CI](https://github.com/AnjanaSuresh01/lidar-nav-cbf/actions/workflows/ci.yml/badge.svg)](https://github.com/AnjanaSuresh01/lidar-nav-cbf/actions/workflows/ci.yml)
+
 **Reactive, classical and learned LiDAR local planners under a control-barrier-function safety filter, benchmarked on 300 BARN-specification maps.**
 
 This started as a replication of a course poster: a neural reactive navigator for
